@@ -2,7 +2,7 @@ name: CI/CD
 #Test2
 on:
   push:
-    branches: [ main, Test ]
+    branches: [ main, Test ] # Allow the build when there is a commit to Main or Tests branches.
   pull_request:
     branches: [ main, Test ]
 
