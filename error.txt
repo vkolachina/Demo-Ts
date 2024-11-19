@@ -25,3 +25,48 @@ line 38, in make_request
   File "C:\Users\VKOLACHIN1\AppData\Local\Programs\Python\Python313\Lib\site-packages\requests\models.py", line 1024, in raise_for_status
     raise HTTPError(http_error_msg, response=self)
 requests.exceptions.HTTPError: 404 Client Error: Not Found for url: https://api.github.com/orgs/mgm-analytics/members
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+new error
+
+2024-11-18 21:03:02,738 - WARNING - Request failed. Retrying... (Attempt 1/3)
+2024-11-18 21:03:03,969 - WARNING - Request failed. Retrying... (Attempt 2/3)
+2024-11-18 21:03:06,206 - ERROR - Request failed after 3 attempts. Error: 404 Client Error: Not Found for url: https://api.github.com/orgs/client-tooling/members
+Traceback (most recent call last):
+  File "c:\Users\VKOLACHIN1\OneDrive - MGM Resorts International\Desktop\Useronboarding - mapping\onboarding.py", 
+line 113, in <module>
+    main()
+    ~~~~^^
+  File "c:\Users\VKOLACHIN1\OneDrive - MGM Resorts International\Desktop\Useronboarding - mapping\onboarding.py", 
+line 107, in main
+    process_mannequins(CSV_FILE)
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "c:\Users\VKOLACHIN1\OneDrive - MGM Resorts International\Desktop\Useronboarding - mapping\onboarding.py", 
+line 80, in process_mannequins
+    org_members = {member['login']: member for member in get_org_members(ORG_NAME)}
+                                                         ~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "c:\Users\VKOLACHIN1\OneDrive - MGM Resorts International\Desktop\Useronboarding - mapping\onboarding.py", 
+line 49, in get_org_members
+    return make_request(url)
+  File "c:\Users\VKOLACHIN1\OneDrive - MGM Resorts International\Desktop\Useronboarding - mapping\onboarding.py", 
+line 38, in make_request
+    response.raise_for_status()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\VKOLACHIN1\AppData\Local\Programs\Python\Python313\Lib\site-packages\requests\models.py", line 1024, in raise_for_status
+    raise HTTPError(http_error_msg, response=self)
+requests.exceptions.HTTPError: 404 Client Error: Not Found for url: https://api.github.com/orgs/client-tooling/members
