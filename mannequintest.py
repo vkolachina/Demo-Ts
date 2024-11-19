@@ -46,25 +46,33 @@ def make_request(url, method='get', data=None, max_retries=3):
 
 def get_org_members(org_name):
     url = f"{GITHUB_API_URL}/orgs/{org_name}/members"
-    return make_request(url)
+    try:
+        return make_request(url)
+    except requests.RequestException as e:
+        logging.error(f"Failed to get members for organization {org_name}. Error: {str(e)}")
+        return []
 
 def get_user_email(username):
     url = f"{GITHUB_API_URL}/users/{username}"
-    user_data = make_request(url)
-    return user_data.get('email')
+    try:
+        user_data = make_request(url)
+        return user_data.get('email')
+    except requests.RequestException as e:
+        logging.error(f"Failed to get email for user {username}. Error: {str(e)}")
+        return None
 
 def reclaim_mannequin(mannequin_id, target_user):
     url = f"{GITHUB_API_URL}/enterprises/{ORG_NAME}/mannequins/{mannequin_id}/reclaim"
     data = {
         "target_user_id": target_user,
-        "skip_invitation": True
+        "skip_invitation": False  # Set to False to send an invitation
     }
     try:
         make_request(url, method='post', data=data)
-        logging.info(f"Successfully reclaimed mannequin {mannequin_id} for user {target_user}")
+        logging.info(f"Successfully sent reclamation invitation for mannequin {mannequin_id} to user {target_user}")
         return True
     except requests.RequestException as e:
-        logging.error(f"Failed to reclaim mannequin {mannequin_id}: {str(e)}")
+        logging.error(f"Failed to send reclamation invitation for mannequin {mannequin_id}: {str(e)}")
         return False
 
 def validate_csv(csv_file):
@@ -93,9 +101,9 @@ def process_mannequins(csv_file):
                 if mannequin_email and target_user_email:
                     success = reclaim_mannequin(mannequin_id, target_user)
                     if success:
-                        logging.info(f"Successfully reclaimed mannequin {mannequin_id} ({mannequin_username}) for user {target_user}")
+                        logging.info(f"Successfully sent reclamation invitation for mannequin {mannequin_id} ({mannequin_username}) to user {target_user}")
                     else:
-                        logging.error(f"Failed to reclaim mannequin {mannequin_id} ({mannequin_username})")
+                        logging.error(f"Failed to send reclamation invitation for mannequin {mannequin_id} ({mannequin_username})")
                 else:
                     logging.warning(f"Could not fetch email for mannequin {mannequin_username} or target user {target_user}")
             else:
