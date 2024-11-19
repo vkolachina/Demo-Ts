@@ -4,15 +4,10 @@ import csv
 import logging
 import requests
 import time
-from dotenv import load_dotenv
-
-# Load environment variables
-load_dotenv()
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-# Configuration
 GITHUB_API_URL = "https://api.github.com"
 TOKEN = os.getenv('GITHUB_TOKEN')
 CSV_FILE = os.getenv('CSV_FILE')
@@ -54,13 +49,8 @@ def get_user_email(username):
     user_data = make_request(url)
     return user_data.get('email')
 
-def get_emu_users():
-    # This function should be implemented to fetch users from your EMU system
-    # For now, we'll return an empty list
-    return []
-
 def reclaim_mannequin(mannequin_id, target_user_id):
-    url = f"{GITHUB_API_URL}/enterprises/{os.getenv('GITHUB_ENTERPRISE_NAME')}/mannequins/{mannequin_id}/reclaim"
+    url = f"{GITHUB_API_URL}/enterprises/{ORG_NAME}/mannequins/{mannequin_id}/reclaim"
     data = {
         "target_user_id": target_user_id,
         "skip_invitation": True
@@ -79,36 +69,33 @@ def validate_csv(csv_file):
     with open(csv_file, 'r') as file:
         csv_reader = csv.reader(file)
         header = next(csv_reader, None)
-        if header != ['mannequin_username', 'mannequin_id']:
+        if header != ['mannequin_username', 'mannequin_id', 'target-user']:
             raise ValueError("CSV file does not have the correct header format")
 
 def process_mannequins(csv_file):
     org_members = {member['login']: member for member in get_org_members(ORG_NAME)}
-    emu_users = get_emu_users()
 
     with open(csv_file, 'r') as file:
         csv_reader = csv.DictReader(file)
         for row in csv_reader:
             mannequin_username = row['mannequin_username']
             mannequin_id = row['mannequin_id']
+            target_user = row['target-user']
 
             if mannequin_username in org_members:
-                email = get_user_email(mannequin_username)
-                if email:
-                    emu_user = next((user for user in emu_users if user['email'] == email), None)
-                    if emu_user:
-                        target_user_id = emu_user['id']
-                        success = reclaim_mannequin(mannequin_id, target_user_id)
-                        if success:
-                            logging.info(f"Successfully reclaimed mannequin {mannequin_id} for user {target_user_id}")
-                        else:
-                            logging.error(f"Failed to reclaim mannequin {mannequin_id}")
+                mannequin_email = get_user_email(mannequin_username)
+                target_user_email = get_user_email(target_user)
+                
+                if mannequin_email and target_user_email:
+                    success = reclaim_mannequin(mannequin_id, target_user)
+                    if success:
+                        logging.info(f"Successfully reclaimed mannequin {mannequin_id} ({mannequin_username}) for user {target_user}")
                     else:
-                        logging.warning(f"No matching EMU user found for {mannequin_username}")
+                        logging.error(f"Failed to reclaim mannequin {mannequin_id} ({mannequin_username})")
                 else:
-                    logging.warning(f"No email found for GitHub user {mannequin_username}")
+                    logging.warning(f"Could not fetch email for mannequin {mannequin_username} or target user {target_user}")
             else:
-                logging.warning(f"GitHub handle {mannequin_username} not found in organization members")
+                logging.warning(f"Mannequin {mannequin_username} not found in organization members")
 
 def main():
     try:
