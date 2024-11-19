@@ -4,6 +4,10 @@ import csv
 import logging
 import requests
 import time
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -49,15 +53,15 @@ def get_user_email(username):
     user_data = make_request(url)
     return user_data.get('email')
 
-def reclaim_mannequin(mannequin_id, target_user_id):
+def reclaim_mannequin(mannequin_id, target_user):
     url = f"{GITHUB_API_URL}/enterprises/{ORG_NAME}/mannequins/{mannequin_id}/reclaim"
     data = {
-        "target_user_id": target_user_id,
+        "target_user_id": target_user,
         "skip_invitation": True
     }
     try:
         make_request(url, method='post', data=data)
-        logging.info(f"Successfully reclaimed mannequin {mannequin_id} for user {target_user_id}")
+        logging.info(f"Successfully reclaimed mannequin {mannequin_id} for user {target_user}")
         return True
     except requests.RequestException as e:
         logging.error(f"Failed to reclaim mannequin {mannequin_id}: {str(e)}")
