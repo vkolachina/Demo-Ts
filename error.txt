@@ -1,15 +1,14 @@
-Traceback (most recent call last):
-  File "c:\Users\VKOLACHIN1\OneDrive - MGM Resorts International\Desktop\Useronboarding - mapping\mannequin_chat.py", line 118, in <module>
-    process_user_mappings(
-    ~~~~~~~~~~~~~~~~~~~~~^
-        user_mappings_file=USER_MAPPINGS_FILE,
-        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+File "c:\Users\VKOLACHIN1\OneDrive - MGM Resorts International\Desktop\Useronboarding - mapping\mannequin_chat.py", line 127, in <module>
+    main()
+    ~~~~^^
+  File "c:\Users\VKOLACHIN1\OneDrive - MGM Resorts International\Desktop\Useronboarding - mapping\mannequin_chat.py", line 124, in main
+    process_user_mappings(USER_MAPPINGS_FILE, emu_users_df, org_member_emails, GITHUB_TOKEN)
+    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\Users\VKOLACHIN1\OneDrive - MGM Resorts International\Desktop\Useronboarding - mapping\mannequin_chat.py", line 73, in process_user_mappings
+    if matched_emu_user:
+       ^^^^^^^^^^^^^^^^
+  File "C:\Users\VKOLACHIN1\AppData\Local\Programs\Python\Python313\Lib\site-packages\pandas\core\generic.py", line 1577, in __nonzero__
+    raise ValueError(
     ...<2 lines>...
-        token=GITHUB_TOKEN
-        ^^^^^^^^^^^^^^^^^^
     )
-    ^
-  File "c:\Users\VKOLACHIN1\OneDrive - MGM Resorts International\Desktop\Useronboarding - mapping\mannequin_chat.py", line 85, in process_user_mappings
-    mannequin_user = mapping["mannequin_user"]
-                     ~~~~~~~^^^^^^^^^^^^^^^^^^
+ValueError: The truth value of a Series is ambiguous. Use a.empty, a.bool(), a.item(), a.any() or a.all().
