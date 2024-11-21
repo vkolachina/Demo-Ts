@@ -2,10 +2,10 @@ Traceback (most recent call last):
   File "c:\Users\VKOLACHIN1\OneDrive - MGM Resorts International\Desktop\Useronboarding - mapping\mannequin.py", line 75, in <module>
     main()
     ~~~~^^
-  File "c:\Users\VKOLACHIN1\OneDrive - MGM Resorts International\Desktop\Useronboarding - mapping\mannequin.py", line 70, in main
-    emu_users = get_emu_users()
-  File "c:\Users\VKOLACHIN1\OneDrive - MGM Resorts International\Desktop\Useronboarding - mapping\mannequin.py", line 43, in get_emu_users
-    with open(EMU_CSV, 'r') as file:
-         ~~~~^^^^^^^^^^^^^^
+  File "c:\Users\VKOLACHIN1\OneDrive - MGM Resorts International\Desktop\Useronboarding - mapping\mannequin.py", line 71, in main
+    process_ghec_csv(GHEC_CSV, emu_users)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "c:\Users\VKOLACHIN1\OneDrive - MGM Resorts International\Desktop\Useronboarding - mapping\mannequin.py", line 51, in process_ghec_csv
+    with open(ghec_csv, 'r') as file:
+         ~~~~^^^^^^^^^^^^^^^
 TypeError: expected str, bytes or os.PathLike object, not NoneType
-PS C:\Users\VKOLACHIN1\OneDrive - MGM Resorts International\Desktop\Useronboarding - mapping>
