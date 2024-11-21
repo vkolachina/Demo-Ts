@@ -4,7 +4,6 @@ import csv
 import logging
 import requests
 import time
-from github import Github
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -19,9 +18,6 @@ ORG_NAME = os.getenv('ORG_NAME')
 GHEC_CSV = os.getenv('GHEC_CSV')
 
 GITHUB_API_URL = "https://api.github.com"
-
-# Initialize the GitHub API client
-g = Github(GITHUB_TOKEN)
 
 def fetch_org_members(org_name, token):
     url = f"{GITHUB_API_URL}/orgs/{org_name}/members"
