@@ -5,24 +5,21 @@ import logging
 import requests
 import time
 from github import Github
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-# Environment variables and constants
+# Environment variables
 GITHUB_TOKEN = os.getenv('GITHUB_TOKEN')
 ORG_NAME = os.getenv('ORG_NAME')
 CSV_FILE = os.getenv('CSV_FILE')
-
-if not GITHUB_TOKEN:
-    logging.error("GITHUB_TOKEN not found. Please set the GITHUB_TOKEN environment variable.")
-    sys.exit(1)
-
-if not CSV_FILE:
-    logging.error("CSV_FILE not found. Please set the CSV_FILE environment variable.")
-    sys.exit(1)
-
 GITHUB_API_URL = "https://api.github.com"
+
+# Initialize the GitHub API client
 g = Github(GITHUB_TOKEN)
 
 def fetch_org_members(org_name, token):
@@ -92,7 +89,7 @@ def get_user_id(identifier):
                 return users[0]['id']
             else:
                 logging.warning(f"No user found with email: {identifier}. Trying as username.")
-                return get_user_id(identifier.split('@')[0])  # Try with the part before @
+                return get_user_id(identifier.split('@')[0])
         except requests.RequestException as e:
             logging.error(f"Failed to get user ID for email {identifier}. Error: {str(e)}")
             return None
@@ -105,51 +102,47 @@ def get_user_id(identifier):
             logging.error(f"Failed to get user ID for username {identifier}. Error: {str(e)}")
             return None
 
-def validate_csv(csv_file):
-    if not os.path.exists(csv_file):
-        raise FileNotFoundError(f"CSV file not found: {csv_file}")
+def process_mannequins(ghec_csv, emu_csv):
+    ghec_users = read_csv(ghec_csv)
+    emu_users = read_csv(emu_csv)
     
-    with open(csv_file, 'r') as file:
-        csv_reader = csv.reader(file)
-        header = next(csv_reader, None)
-        if header != ['mannequin_username', 'mannequin_id', 'role', 'target']:
-            raise ValueError("CSV file does not have the correct header format")
+    for mannequin in ghec_users:
+        mannequin_username = mannequin['mannequin-user']
+        mannequin_id = mannequin['mannequin-id']
+        
+        email = fetch_user_email(mannequin_username, GITHUB_TOKEN)
+        if email:
+            target_user = find_target_user(email, emu_users)
+            if target_user:
+                logging.info(f"Found target user: {target_user['login']} for mannequin: {mannequin_username}")
+                reclaim_mannequin(mannequin_username, target_user['login'])
+            else:
+                logging.warning(f"No target user found for mannequin: {mannequin_username}")
+        else:
+            logging.warning(f"No email found for mannequin: {mannequin_username}")
 
-def process_mannequins(csv_file):
-    with open(csv_file, 'r') as file:
-        csv_reader = csv.DictReader(file)
-        for row in csv_reader:
-            mannequin_username = row['mannequin_username']
-            identifier = row['mannequin_id']  # This can now be email or username
-            role = row['role']
-            target = row['target']
+def read_csv(file_path):
+    with open(file_path, 'r') as file:
+        return list(csv.DictReader(file))
 
-            try:
-                validate_input(identifier, target, role)
-                github_role = determine_role(role)
-                add_user_to_target(identifier, target, github_role)
-            except ValueError as e:
-                logging.error(f"Invalid input: {row}. Error: {str(e)}")
-            except Exception as e:
-                logging.error(f"Unexpected error processing: {row}. Error: {str(e)}")
+def find_target_user(email, emu_users):
+    return next((user for user in emu_users if user['saml_name_id'] == email), None)
+
+def reclaim_mannequin(mannequin_username, target_username):
+    # Implement the logic to reclaim the mannequin here
+    logging.info(f"Reclaiming mannequin {mannequin_username} for target user {target_username}")
 
 def main():
-    try:
-        validate_csv(CSV_FILE)
-        
-        # Fetch organization members and their emails
-        members = fetch_org_members(ORG_NAME, GITHUB_TOKEN)
-        for member in members:
-            username = member["login"]
-            email = fetch_user_email(username, GITHUB_TOKEN)
-            if email:
-                print(f"Username: {username}, Email: {email}")
-        
-        # Process mannequins from CSV
-        process_mannequins(CSV_FILE)
+    if not all([GITHUB_TOKEN, ORG_NAME, CSV_FILE]):
+        logging.error("Missing required environment variables. Please check your .env file.")
+        sys.exit(1)
 
-    except (FileNotFoundError, ValueError) as e:
-        logging.error(str(e))
+    try:
+        ghec_csv = CSV_FILE
+        emu_csv = "path_to_emu_users.csv"  # Replace with actual path
+        process_mannequins(ghec_csv, emu_csv)
+    except Exception as e:
+        logging.error(f"An error occurred: {str(e)}")
         sys.exit(1)
 
 if __name__ == "__main__":
