@@ -1,11 +1,2 @@
-Traceback (most recent call last):
-  File "c:\Users\VKOLACHIN1\OneDrive - MGM Resorts International\Desktop\Useronboarding - mapping\mannequin.py", line 75, in <module>
-    main()
-    ~~~~^^
-  File "c:\Users\VKOLACHIN1\OneDrive - MGM Resorts International\Desktop\Useronboarding - mapping\mannequin.py", line 71, in main
-    process_ghec_csv(GHEC_CSV, emu_users)
-    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
-  File "c:\Users\VKOLACHIN1\OneDrive - MGM Resorts International\Desktop\Useronboarding - mapping\mannequin.py", line 51, in process_ghec_csv
-    with open(ghec_csv, 'r') as file:
-         ~~~~^^^^^^^^^^^^^^^
-TypeError: expected str, bytes or os.PathLike object, not NoneType
+2024-11-21 07:31:45,787 - ERROR - An error occurred: openpyxl does not support .csv file format, please check you 
+can open it with Excel first. Supported formats are: .xlsx,.xlsm,.xltx,.xltm
