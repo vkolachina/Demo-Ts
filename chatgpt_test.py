@@ -2,13 +2,21 @@ import os
 import csv
 import pandas as pd
 import requests
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Step 1: Load EMU Users List
 def load_emu_users_list(file_path):
+    """Load EMU user data from an Excel file."""
     return pd.read_excel(file_path)
 
 def find_user_in_emu(mannequin_user, emu_users_df):
-    # Check if the mannequin_user matches either the login or name column in EMU users
+    """
+    Find a user in the EMU users list by matching the mannequin_user
+    with either the 'login' or 'name' column.
+    """
     matched_user = emu_users_df[
         (emu_users_df['login'] == mannequin_user) | (emu_users_df['name'] == mannequin_user)
     ]
@@ -18,6 +26,7 @@ def find_user_in_emu(mannequin_user, emu_users_df):
 
 # Step 2: Fetch Organization Members
 def fetch_org_members(org_name, token):
+    """Fetch all members of a GitHub organization."""
     url = f"https://api.github.com/orgs/{org_name}/members"
     headers = {
         "Authorization": f"token {token}",
@@ -27,12 +36,13 @@ def fetch_org_members(org_name, token):
     if response.status_code == 200:
         return response.json()  # List of members
     else:
-        print(f"Error: {response.status_code}")
+        print(f"Error fetching organization members: {response.status_code}")
         print(response.json())
         return []
 
 # Step 3: Fetch User Emails
 def fetch_user_email(username, token):
+    """Fetch the email of a GitHub user."""
     url = f"https://api.github.com/users/{username}"
     headers = {
         "Authorization": f"token {token}",
@@ -43,12 +53,16 @@ def fetch_user_email(username, token):
         user_data = response.json()
         return user_data.get("email")
     else:
-        print(f"Error: {response.status_code}")
+        print(f"Error fetching email for user {username}: {response.status_code}")
         print(response.json())
         return None
 
 # Step 4: Read and Update User Mappings Template
 def process_user_mappings(user_mappings_file, emu_users_file, org_name, token):
+    """
+    Read the user-mappings-template.csv file, find matches in the EMU users list,
+    and update the 'target-user' field in the same file.
+    """
     print("Loading EMU users list...")
     emu_users_df = load_emu_users_list(emu_users_file)
 
@@ -88,12 +102,19 @@ def process_user_mappings(user_mappings_file, emu_users_file, org_name, token):
 
 # Main Entry Point
 if __name__ == "__main__":
-    # Environment Variables
-    EMU_USERS_FILE = os.getenv("EMU_USERS_FILE", "emu-users.xlsx")  # Excel file with EMU user data
-    USER_MAPPINGS_FILE = os.getenv("USER_MAPPINGS_FILE", "user-mappings-template.csv")  # CSV file to update
-    ORG_NAME = os.getenv("ORG_NAME", "your_org_name_here")  # GitHub organization name
-    GITHUB_TOKEN = os.getenv("GITHUB_TOKEN", "your_github_token_here")  # Personal Access Token (PAT)
+    # Load variables from .env file
+    EMU_USERS_FILE = os.getenv("EMU_USERS_FILE")  # Path to the Excel file with EMU user data
+    USER_MAPPINGS_FILE = os.getenv("USER_MAPPINGS_FILE")  # Path to the CSV file to update
+    ORG_NAME = os.getenv("ORG_NAME")  # GitHub organization name
+    GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")  # GitHub Personal Access Token (PAT)
 
+    # Validate required environment variables
+    if not EMU_USERS_FILE or not USER_MAPPINGS_FILE or not ORG_NAME or not GITHUB_TOKEN:
+        print("Error: Missing required environment variables.")
+        print("Ensure EMU_USERS_FILE, USER_MAPPINGS_FILE, ORG_NAME, and GITHUB_TOKEN are set in the .env file.")
+        exit(1)
+
+    # Process the user mappings
     process_user_mappings(
         user_mappings_file=USER_MAPPINGS_FILE,
         emu_users_file=EMU_USERS_FILE,
