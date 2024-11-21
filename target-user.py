@@ -1,10 +1,6 @@
 import csv
 import os
 import requests
-from dotenv import load_dotenv
-
-# Load environment variables from .env file (optional, if you are using a .env file)
-load_dotenv()
 
 # Code A: Fetch GitHub organization members
 def fetch_org_members(org_name, token):
@@ -17,7 +13,7 @@ def fetch_org_members(org_name, token):
     if response.status_code == 200:
         return response.json()  # Return the list of members
     else:
-        print(f"Error: {response.status_code}")
+        print(f"Error fetching members: {response.status_code}")
         print(response.json())
         return []
 
@@ -33,24 +29,24 @@ def fetch_user_email(username, token):
         user_data = response.json()
         return user_data.get("email")  # Return email
     else:
-        print(f"Error: {response.status_code}")
+        print(f"Error fetching email for {username}: {response.status_code}")
         print(response.json())
         return None
 
-# Main task: Process the CSV file and update target-user
+# Process the CSV file to update target-user
 def process_csv_and_update(csv_file, org_name, token):
     # Step 1: Fetch organization members
     print(f"Fetching members of the organization: {org_name}")
     members = fetch_org_members(org_name, token)
 
-    # Step 2: Create a mapping of email to username
+    # Step 2: Create a mapping of usernames to emails
     print("Fetching emails for organization members...")
-    email_to_username = {}
+    username_to_email = {}
     for member in members:
         username = member['login']
         email = fetch_user_email(username, token)
         if email:
-            email_to_username[email] = username  # Map email to username
+            username_to_email[username] = email  # Map username to email
 
     # Step 3: Process the CSV file
     print(f"Processing the CSV file: {csv_file}")
@@ -59,21 +55,21 @@ def process_csv_and_update(csv_file, org_name, token):
         reader = csv.DictReader(infile)
         for row in reader:
             mannequin_user = row['mannequin-user']  # GitHub handle
-            mannequin_id = row['mannequin-id']  # Email or ID to be kept as is
-            target_user = row.get('target-user', '')  # Ensure target-user is handled
+            mannequin_id = row['mannequin-id']
+            target_user = row.get('target-user', '')  # Default to empty if not present
 
-            # Check if mannequin-id matches any email in the organization
-            if mannequin_id in email_to_username:
-                target_user = email_to_username[mannequin_id]  # Get corresponding username
-                print(f"Match found: {mannequin_id} -> {target_user}")
+            # Match the mannequin-user with the username in the organization
+            if mannequin_user in username_to_email:
+                target_user = mannequin_user  # If match is found, use the same username
+                print(f"Match found: {mannequin_user} -> {target_user}")
             else:
-                print(f"No match found for: {mannequin_id}")
+                print(f"No match found for: {mannequin_user}")
 
             # Update the row with the target-user
             row['target-user'] = target_user
             updated_rows.append(row)
 
-    # Step 4: Write the updated data back to the same CSV file
+    # Step 4: Write the updated data back to the CSV file
     print(f"Updating the CSV file: {csv_file}")
     with open(csv_file, 'w', newline='', encoding='utf-8') as outfile:
         fieldnames = ['mannequin-user', 'mannequin-id', 'target-user']
@@ -84,12 +80,19 @@ def process_csv_and_update(csv_file, org_name, token):
     print(f"CSV update completed. File saved as '{csv_file}'.")
 
 # Example usage
-org_name = os.getenv("ORG_NAME")  # Fetch organization name from environment variable
-token = os.getenv("GITHUB_TOKEN")  # Fetch GitHub token from environment variable
-csv_file = "user-mappings-template.csv"  # Fixed CSV file name
+def main():
+    # Define environment variables or replace with hardcoded values
+    org_name = os.getenv("ORG_NAME", "mgmrri")  # Replace with your organization name
+    token = os.getenv("GITHUB_TOKEN", "your_github_token_here")  # Replace with your GitHub token
+    csv_file = "user-mappings-template.csv"  # Fixed file name as per the requirement
 
-# Validate environment variables and run the script
-if not org_name or not token:
-    print("Please set the environment variables ORG_NAME and GITHUB_TOKEN.")
-else:
+    # Validate environment variables
+    if not org_name or not token:
+        print("Please set the environment variables ORG_NAME and GITHUB_TOKEN.")
+        return
+
+    # Run the process
     process_csv_and_update(csv_file, org_name, token)
+
+if __name__ == "__main__":
+    main()
