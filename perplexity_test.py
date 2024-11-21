@@ -16,7 +16,8 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 # Environment variables
 GITHUB_TOKEN = os.getenv('GITHUB_TOKEN')
 ORG_NAME = os.getenv('ORG_NAME')
-CSV_FILE = os.getenv('CSV_FILE')
+GHEC_CSV = os.getenv('GHEC_CSV')
+
 GITHUB_API_URL = "https://api.github.com"
 
 # Initialize the GitHub API client
@@ -102,9 +103,31 @@ def get_user_id(identifier):
             logging.error(f"Failed to get user ID for username {identifier}. Error: {str(e)}")
             return None
 
-def process_mannequins(ghec_csv, emu_csv):
+def read_csv(file_path):
+    with open(file_path, 'r') as file:
+        return list(csv.DictReader(file))
+
+def fetch_emu_users():
+    # Implement the API call to fetch EMU users here
+    # This is a placeholder function
+    url = f"{GITHUB_API_URL}/orgs/{ORG_NAME}/members"
+    try:
+        response = make_request(url)
+        return response.json()
+    except requests.RequestException as e:
+        logging.error(f"Failed to fetch EMU users. Error: {str(e)}")
+        return []
+
+def find_target_user(email, emu_users):
+    return next((user for user in emu_users if user.get('email') == email), None)
+
+def reclaim_mannequin(mannequin_username, target_username):
+    # Implement the logic to reclaim the mannequin here
+    logging.info(f"Reclaiming mannequin {mannequin_username} for target user {target_username}")
+
+def process_mannequins(ghec_csv):
     ghec_users = read_csv(ghec_csv)
-    emu_users = read_csv(emu_csv)
+    emu_users = fetch_emu_users()
     
     for mannequin in ghec_users:
         mannequin_username = mannequin['mannequin-user']
@@ -121,26 +144,13 @@ def process_mannequins(ghec_csv, emu_csv):
         else:
             logging.warning(f"No email found for mannequin: {mannequin_username}")
 
-def read_csv(file_path):
-    with open(file_path, 'r') as file:
-        return list(csv.DictReader(file))
-
-def find_target_user(email, emu_users):
-    return next((user for user in emu_users if user['saml_name_id'] == email), None)
-
-def reclaim_mannequin(mannequin_username, target_username):
-    # Implement the logic to reclaim the mannequin here
-    logging.info(f"Reclaiming mannequin {mannequin_username} for target user {target_username}")
-
 def main():
-    if not all([GITHUB_TOKEN, ORG_NAME, CSV_FILE]):
+    if not all([GITHUB_TOKEN, ORG_NAME, GHEC_CSV]):
         logging.error("Missing required environment variables. Please check your .env file.")
         sys.exit(1)
 
     try:
-        ghec_csv = CSV_FILE
-        emu_csv = "path_to_emu_users.csv"  # Replace with actual path
-        process_mannequins(ghec_csv, emu_csv)
+        process_mannequins(GHEC_CSV)
     except Exception as e:
         logging.error(f"An error occurred: {str(e)}")
         sys.exit(1)
