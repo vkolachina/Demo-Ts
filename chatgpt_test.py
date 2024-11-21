@@ -82,9 +82,12 @@ def process_user_mappings(user_mappings_file, emu_users_file, org_name, token):
 
     print("Processing user mappings...")
     for mapping in mappings:
-        mannequin_user = mapping["mannequin_user"]
+        mannequin_user = mapping.get("mannequin-user")  # Updated to match new header
+        if not mannequin_user:
+            print(f"Skipping row due to missing 'mannequin-user': {mapping}")
+            continue
+
         matched_emu_user = find_user_in_emu(mannequin_user, emu_users_df)
-        
         if matched_emu_user:
             emu_email = matched_emu_user.get("email")
             for org_user, email in org_member_emails.items():
@@ -94,7 +97,7 @@ def process_user_mappings(user_mappings_file, emu_users_file, org_name, token):
 
     print("Writing updates back to the user mappings file...")
     with open(user_mappings_file, mode='w', newline='') as file:
-        fieldnames = ["mannequin_user", "mannequin_id", "target-user"]
+        fieldnames = ["mannequin-user", "mannequin-id", "target-user"]  # Updated to match new headers
         csv_writer = csv.DictWriter(file, fieldnames=fieldnames)
         csv_writer.writeheader()
         csv_writer.writerows(mappings)
