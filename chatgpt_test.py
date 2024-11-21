@@ -1,32 +1,20 @@
-import os
-import csv
-import pandas as pd
 import requests
+import pandas as pd
+import os
 from dotenv import load_dotenv
+import csv
 
 # Load environment variables from .env file
 load_dotenv()
 
-# Step 1: Load EMU Users List
-def load_emu_users_list(file_path):
-    """Load EMU user data from an Excel file."""
-    return pd.read_excel(file_path)
+# Access the environment variables
+GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
+ORG_NAME = os.getenv("ORG_NAME")
+EMU_USERS_FILE = os.getenv("EMU_USERS_FILE")
+USER_MAPPINGS_FILE = os.getenv("USER_MAPPINGS_FILE")
 
-def find_user_in_emu(mannequin_user, emu_users_df):
-    """
-    Find a user in the EMU users list by matching the mannequin_user
-    with either the 'login' or 'name' column.
-    """
-    matched_user = emu_users_df[
-        (emu_users_df['login'] == mannequin_user) | (emu_users_df['name'] == mannequin_user)
-    ]
-    if not matched_user.empty:
-        return matched_user.iloc[0].to_dict()  # Return the first matched record as a dictionary
-    return None
-
-# Step 2: Fetch Organization Members
+# Function to fetch organization members
 def fetch_org_members(org_name, token):
-    """Fetch all members of a GitHub organization."""
     url = f"https://api.github.com/orgs/{org_name}/members"
     headers = {
         "Authorization": f"token {token}",
@@ -34,15 +22,14 @@ def fetch_org_members(org_name, token):
     }
     response = requests.get(url, headers=headers)
     if response.status_code == 200:
-        return response.json()  # List of members
+        return response.json()
     else:
-        print(f"Error fetching organization members: {response.status_code}")
+        print(f"Error: {response.status_code}")
         print(response.json())
         return []
 
-# Step 3: Fetch User Emails
+# Function to fetch user email from GitHub
 def fetch_user_email(username, token):
-    """Fetch the email of a GitHub user."""
     url = f"https://api.github.com/users/{username}"
     headers = {
         "Authorization": f"token {token}",
@@ -53,81 +40,88 @@ def fetch_user_email(username, token):
         user_data = response.json()
         return user_data.get("email")
     else:
-        print(f"Error fetching email for user {username}: {response.status_code}")
+        print(f"Error: {response.status_code}")
         print(response.json())
         return None
 
-# Step 4: Read and Update User Mappings Template
-def process_user_mappings(user_mappings_file, emu_users_file, org_name, token):
-    """
-    Read the user-mappings-template.csv file, find matches in the EMU users list,
-    and update the 'target-user' field in the same file.
-    """
-    print("Loading EMU users list...")
-    emu_users_df = load_emu_users_list(emu_users_file)
+# Function to find a user in the EMU users list based on GitHub handle
+def find_user_in_emu(github_handle, emu_users_df):
+    return emu_users_df[emu_users_df['login'] == github_handle].iloc[0] if not emu_users_df[emu_users_df['login'] == github_handle].empty else None
 
-    print("Reading user mappings template...")
-    with open(user_mappings_file, mode='r') as file:
-        csv_reader = csv.DictReader(file)
-        mappings = list(csv_reader)  # Convert CSV data to a list of dictionaries
-
-    print("Fetching organization members...")
-    org_members = fetch_org_members(org_name, token)
+# Function to process the user mappings from the CSV file
+def process_user_mappings(user_mappings_file, emu_users_df, org_member_emails, token):
+    print("Reading user mappings template")
     
-    print("Fetching email addresses of organization members...")
-    org_member_emails = {
-        member["login"]: fetch_user_email(member["login"], token)
-        for member in org_members
-    }
+    # Read the CSV file with user mappings
+    mappings = []
+    with open(user_mappings_file, mode='r', newline='', encoding='utf-8') as file:
+        reader = csv.DictReader(file)
+        for row in reader:
+            mappings.append(row)
 
-    print("Processing user mappings...")
+    print("Processing user mappings")
+    
+    # Iterate through each mapping and check for matches
     for mapping in mappings:
         mannequin_user = mapping.get("mannequin-user")  # Updated to match new header
         if not mannequin_user:
             print(f"Skipping row due to missing 'mannequin-user': {mapping}")
             continue
 
+        # Find the matching EMU user
         matched_emu_user = find_user_in_emu(mannequin_user, emu_users_df)
         if matched_emu_user:
-            print(f"Found match in EMU for {mannequin_user}: {matched_emu_user}")
+            # Only print the login ID or name and the SAML Name ID when a match is found
             emu_email = matched_emu_user.get("email")
+            emu_saml_name_id = matched_emu_user.get("saml_name_id")  # Assuming this is the field you're referring to
+            
+            # Print the relevant user information
+            print(f"Found match in EMU for {mannequin_user}: {matched_emu_user['login']} / {matched_emu_user['name']} (SAML ID: {emu_saml_name_id})")
+
+            # Now match this with GitHub organization member email
             for org_user, email in org_member_emails.items():
                 if email == emu_email:
+                    # Print the matched GitHub user
                     print(f"Matched GitHub user {org_user} with email {email}")
                     mapping["target-user"] = org_user
                     break
-           # Optional: If no match is found, log that it wasn't updated
             else:
+                # No match found with GitHub organization members
                 print(f"No matching email in GitHub org for {emu_email}")
         else:
+            # No match found in EMU
             print(f"No match found in EMU for {mannequin_user}")
 
-    print("Writing updates back to the user mappings file...")
-    with open(user_mappings_file, mode='w', newline='') as file:
-        fieldnames = ["mannequin-user", "mannequin-id", "target-user"]  # Updated to match new headers
-        csv_writer = csv.DictWriter(file, fieldnames=fieldnames)
-        csv_writer.writeheader()
-        csv_writer.writerows(mappings)
-    print("Process completed successfully!")
+    # Write the updated mappings back to the CSV file
+    print("Writing updates back to the user mappings file")
+    with open(user_mappings_file, mode='w', newline='', encoding='utf-8') as file:
+        fieldnames = ["mannequin-user", "mannequin-id", "target-user"]
+        writer = csv.DictWriter(file, fieldnames=fieldnames)
+        
+        writer.writeheader()
+        writer.writerows(mappings)
 
-# Main Entry Point
-if __name__ == "__main__":
-    # Load variables from .env file
-    EMU_USERS_FILE = os.getenv("EMU_USERS_FILE")  # Path to the Excel file with EMU user data
-    USER_MAPPINGS_FILE = os.getenv("USER_MAPPINGS_FILE")  # Path to the CSV file to update
-    ORG_NAME = os.getenv("ORG_NAME")  # GitHub organization name
-    GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")  # GitHub Personal Access Token (PAT)
+    print("Process completed successfully")
 
-    # Validate required environment variables
-    if not EMU_USERS_FILE or not USER_MAPPINGS_FILE or not ORG_NAME or not GITHUB_TOKEN:
-        print("Error: Missing required environment variables.")
-        print("Ensure EMU_USERS_FILE, USER_MAPPINGS_FILE, ORG_NAME, and GITHUB_TOKEN are set in the .env file.")
-        exit(1)
+# Main function to execute the process
+def main():
+    print("Loading EMU users list")
+    
+    # Load the EMU users Excel file
+    emu_users_df = pd.read_excel(EMU_USERS_FILE)
+
+    print("Fetching organization members")
+    org_members = fetch_org_members(ORG_NAME, GITHUB_TOKEN)
+    org_member_emails = {}
+    
+    # Create a dictionary with GitHub usernames as keys and email addresses as values
+    for org_member in org_members:
+        email = fetch_user_email(org_member["login"], GITHUB_TOKEN)
+        if email:
+            org_member_emails[org_member["login"]] = email
 
     # Process the user mappings
-    process_user_mappings(
-        user_mappings_file=USER_MAPPINGS_FILE,
-        emu_users_file=EMU_USERS_FILE,
-        org_name=ORG_NAME,
-        token=GITHUB_TOKEN
-    )
+    process_user_mappings(USER_MAPPINGS_FILE, emu_users_df, org_member_emails, GITHUB_TOKEN)
+
+if __name__ == "__main__":
+    main()
