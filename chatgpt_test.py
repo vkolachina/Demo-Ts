@@ -89,11 +89,18 @@ def process_user_mappings(user_mappings_file, emu_users_file, org_name, token):
 
         matched_emu_user = find_user_in_emu(mannequin_user, emu_users_df)
         if matched_emu_user:
+            print(f"Found match in EMU for {mannequin_user}: {matched_emu_user}")
             emu_email = matched_emu_user.get("email")
             for org_user, email in org_member_emails.items():
                 if email == emu_email:
+                    print(f"Matched GitHub user {org_user} with email {email}")
                     mapping["target-user"] = org_user
                     break
+           # Optional: If no match is found, log that it wasn't updated
+            else:
+                print(f"No matching email in GitHub org for {emu_email}")
+        else:
+            print(f"No match found in EMU for {mannequin_user}")
 
     print("Writing updates back to the user mappings file...")
     with open(user_mappings_file, mode='w', newline='') as file:
