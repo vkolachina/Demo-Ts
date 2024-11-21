@@ -1,2 +1,15 @@
-2024-11-21 07:31:45,787 - ERROR - An error occurred: openpyxl does not support .csv file format, please check you 
-can open it with Excel first. Supported formats are: .xlsx,.xlsm,.xltx,.xltm
+Traceback (most recent call last):
+  File "c:\Users\VKOLACHIN1\OneDrive - MGM Resorts International\Desktop\Useronboarding - mapping\mannequin_chat.py", line 118, in <module>
+    process_user_mappings(
+    ~~~~~~~~~~~~~~~~~~~~~^
+        user_mappings_file=USER_MAPPINGS_FILE,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+        token=GITHUB_TOKEN
+        ^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "c:\Users\VKOLACHIN1\OneDrive - MGM Resorts International\Desktop\Useronboarding - mapping\mannequin_chat.py", line 85, in process_user_mappings
+    mannequin_user = mapping["mannequin_user"]
+                     ~~~~~~~^^^^^^^^^^^^^^^^^^
