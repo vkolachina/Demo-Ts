@@ -76,7 +76,7 @@ def process_csv_and_reclaim_users(csv_file, org_name, token):
 # Example usage (now pulling values from environment variables)
 org_name = os.getenv("ORG_NAME")  # Fetch organization name from environment variable
 token = os.getenv("GITHUB_TOKEN")  # Fetch GitHub token from environment variable
-csv_file = os.getenv("CSV_FILE")  # Fetch CSV file name from environment variable
+csv_file = os.getenv("CSV_FILE")  # Fetch CSV file path from environment variable
 
 # Validate that the environment variables are set
 if not org_name or not token or not csv_file:
