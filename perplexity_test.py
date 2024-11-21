@@ -1,15 +1,27 @@
+import os
+import sys
 import csv
+import logging
 import requests
-import openpyxl
+import time
+from dotenv import load_dotenv
 
-# Environment variables (replace with actual values)
-GITHUB_TOKEN = "your_github_token"
-ORG_NAME = "mgmrri"
-GHEC_EXCEL = "path_to_ghec_excel_file.xlsx"
-CSV_FILE = "user-mappings-template.csv"
+# Load environment variables
+load_dotenv()
+
+# Set up logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+# Environment variables
+GITHUB_TOKEN = os.getenv('GITHUB_TOKEN')
+ORG_NAME = os.getenv('ORG_NAME')
+GHEC_CSV = os.getenv('GHEC_CSV')
+EMU_CSV = os.getenv('EMU_CSV')
+
+GITHUB_API_URL = "https://api.github.com"
 
 def fetch_org_members(org_name, token):
-    url = f"https://api.github.com/orgs/{org_name}/members"
+    url = f"{GITHUB_API_URL}/orgs/{org_name}/members"
     headers = {
         "Authorization": f"token {token}",
         "Accept": "application/vnd.github.v3+json"
@@ -18,12 +30,11 @@ def fetch_org_members(org_name, token):
     if response.status_code == 200:
         return response.json()
     else:
-        print(f"Error: {response.status_code}")
-        print(response.json())
+        logging.error(f"Error fetching org members: {response.status_code}")
         return []
 
 def fetch_user_email(username, token):
-    url = f"https://api.github.com/users/{username}"
+    url = f"{GITHUB_API_URL}/users/{username}"
     headers = {
         "Authorization": f"token {token}",
         "Accept": "application/vnd.github.v3+json"
@@ -33,62 +44,106 @@ def fetch_user_email(username, token):
         user_data = response.json()
         return user_data.get("email")
     else:
-        print(f"Error: {response.status_code}")
-        print(response.json())
+        logging.error(f"Error fetching user email: {response.status_code}")
         return None
 
-def read_ghec_excel(file_path):
-    workbook = openpyxl.load_workbook(file_path)
-    sheet = workbook.active
-    ghec_users = []
-    for row in sheet.iter_rows(min_row=2, values_only=True):
-        ghec_users.append({"login": row[0], "name": row[1]})
-    return ghec_users
-
-def process_mannequins(csv_file, ghec_users):
-    emu_members = fetch_org_members(ORG_NAME, GITHUB_TOKEN)
-    updated_rows = []
-
-    with open(csv_file, 'r') as file:
-        reader = csv.DictReader(file)
-        for row in reader:
-            mannequin_user = row['mannequin_user']
-            mannequin_id = row['mannequin_id']
+def make_request(url, method='get', data=None, max_retries=3):
+    headers = {
+        "Authorization": f"token {GITHUB_TOKEN}",
+        "Accept": "application/vnd.github.v3+json"
+    }
+    for attempt in range(max_retries):
+        try:
+            if method == 'get':
+                response = requests.get(url, headers=headers)
+            elif method == 'post':
+                response = requests.post(url, headers=headers, json=data)
+            elif method == 'put':
+                response = requests.put(url, headers=headers, json=data)
             
-            # Check if mannequin_user matches in GHEC users list
-            ghec_match = next((user for user in ghec_users if user['login'] == mannequin_user or user['name'] == mannequin_user), None)
+            if response.status_code == 403 and 'rate limit' in response.text.lower():
+                reset_time = int(response.headers.get('X-RateLimit-Reset', 0))
+                sleep_time = max(reset_time - time.time(), 0) + 1
+                logging.warning(f"Rate limit hit. Sleeping for {sleep_time} seconds.")
+                time.sleep(sleep_time)
+                continue
             
-            if ghec_match:
-                # Fetch email for the mannequin user
-                email = fetch_user_email(mannequin_user, GITHUB_TOKEN)
-                
-                if email:
-                    # Check if email matches any EMU member
-                    emu_match = next((member for member in emu_members if fetch_user_email(member['login'], GITHUB_TOKEN) == email), None)
-                    
-                    if emu_match:
-                        row['target_user'] = emu_match['login']
-                    else:
-                        print(f"No EMU match found for {mannequin_user}")
-                else:
-                    print(f"No email found for {mannequin_user}")
+            response.raise_for_status()
+            return response
+        except requests.RequestException as e:
+            if attempt == max_retries - 1:
+                logging.error(f"Request failed after {max_retries} attempts. Error: {str(e)}")
+                raise
+            logging.warning(f"Request failed. Retrying... (Attempt {attempt + 1}/{max_retries})")
+            time.sleep(2 ** attempt)
+
+def get_user_id(identifier):
+    if '@' in identifier:
+        url = f"{GITHUB_API_URL}/search/users?q={identifier}"
+        try:
+            response = make_request(url)
+            users = response.json().get('items', [])
+            if users:
+                return users[0]['id']
             else:
-                print(f"No GHEC match found for {mannequin_user}")
-            
-            updated_rows.append(row)
+                logging.warning(f"No user found with email: {identifier}. Trying as username.")
+                return get_user_id(identifier.split('@')[0])
+        except requests.RequestException as e:
+            logging.error(f"Failed to get user ID for email {identifier}. Error: {str(e)}")
+            return None
+    else:
+        url = f"{GITHUB_API_URL}/users/{identifier}"
+        try:
+            response = make_request(url)
+            return response.json()['id']
+        except requests.RequestException as e:
+            logging.error(f"Failed to get user ID for username {identifier}. Error: {str(e)}")
+            return None
+
+def read_csv(file_path):
+    with open(file_path, 'r') as file:
+        return list(csv.DictReader(file))
+
+def process_mannequins(ghec_csv, emu_csv):
+    ghec_data = read_csv(ghec_csv)
+    emu_data = read_csv(emu_csv)
+    updated_data = []
+
+    for mannequin in ghec_data:
+        mannequin_username = mannequin['mannequin-user']
+        mannequin_id = mannequin['mannequin-id']
+        
+        email = fetch_user_email(mannequin_username, GITHUB_TOKEN)
+        if email:
+            target_user = next((user for user in emu_data if user['saml_name_id'] == email), None)
+            if target_user:
+                mannequin['target-user'] = target_user['login']
+                logging.info(f"Found target user: {target_user['login']} for mannequin: {mannequin_username}")
+            else:
+                logging.warning(f"No target user found for mannequin: {mannequin_username}")
+        else:
+            logging.warning(f"No email found for mannequin: {mannequin_username}")
+        
+        updated_data.append(mannequin)
 
     # Write updated data back to CSV
-    with open(csv_file, 'w', newline='') as file:
-        fieldnames = ['mannequin_user', 'mannequin_id', 'target_user']
+    with open(ghec_csv, 'w', newline='') as file:
+        fieldnames = ['mannequin-user', 'mannequin-id', 'target-user']
         writer = csv.DictWriter(file, fieldnames=fieldnames)
         writer.writeheader()
-        writer.writerows(updated_rows)
+        writer.writerows(updated_data)
 
 def main():
-    ghec_users = read_ghec_excel(GHEC_EXCEL)
-    process_mannequins(CSV_FILE, ghec_users)
-    print(f"Organization name: {ORG_NAME}")
-    print("CSV file updated with target users.")
+    if not all([GITHUB_TOKEN, ORG_NAME, GHEC_CSV, EMU_CSV]):
+        logging.error("Missing required environment variables. Please check your .env file.")
+        sys.exit(1)
+
+    try:
+        process_mannequins(GHEC_CSV, EMU_CSV)
+        logging.info("CSV file updated with target users.")
+    except Exception as e:
+        logging.error(f"An error occurred: {str(e)}")
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()
