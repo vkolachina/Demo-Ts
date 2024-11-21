@@ -1,9 +1,8 @@
 import os
-import sys
 import csv
 import logging
 import requests
-import time
+from openpyxl import load_workbook
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -12,110 +11,94 @@ load_dotenv()
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-GITHUB_API_URL = "https://api.github.com"
-TOKEN = os.getenv('GITHUB_TOKEN')
-CSV_FILE = os.getenv('CSV_FILE')
+# Environment variables
+GITHUB_TOKEN = os.getenv('GITHUB_TOKEN')
 ORG_NAME = os.getenv('ORG_NAME')
+GHEC_CSV = os.getenv('GHEC_CSV')
+EMU_EXCEL = os.getenv('EMU_EXCEL')
 
-if not all([TOKEN, CSV_FILE, ORG_NAME]):
-    logging.error("Missing required environment variables. Please set GITHUB_TOKEN, CSV_FILE, and ORG_NAME.")
-    sys.exit(1)
+GITHUB_API_URL = "https://api.github.com"
 
-def make_request(url, method='get', data=None, max_retries=3):
+def fetch_org_members(org_name, token):
+    url = f"{GITHUB_API_URL}/orgs/{org_name}/members"
     headers = {
-        "Authorization": f"token {TOKEN}",
+        "Authorization": f"token {token}",
         "Accept": "application/vnd.github.v3+json"
     }
-    for attempt in range(max_retries):
-        try:
-            response = requests.request(method, url, headers=headers, json=data)
-            if response.status_code == 403 and 'rate limit' in response.text.lower():
-                reset_time = int(response.headers.get('X-RateLimit-Reset', 0))
-                sleep_time = max(reset_time - time.time(), 0) + 1
-                logging.warning(f"Rate limit hit. Sleeping for {sleep_time} seconds.")
-                time.sleep(sleep_time)
-                continue
-            response.raise_for_status()
-            return response.json()
-        except requests.RequestException as e:
-            if attempt == max_retries - 1:
-                logging.error(f"Request failed after {max_retries} attempts. Error: {str(e)}")
-                raise
-            logging.warning(f"Request failed. Retrying... (Attempt {attempt + 1}/{max_retries})")
-            time.sleep(2 ** attempt)  # Exponential backoff
-
-def get_org_members(org_name):
-    url = f"{GITHUB_API_URL}/orgs/{org_name}/members"
-    try:
-        return make_request(url)
-    except requests.RequestException as e:
-        logging.error(f"Failed to get members for organization {org_name}. Error: {str(e)}")
+    response = requests.get(url, headers=headers)
+    if response.status_code == 200:
+        return response.json()
+    else:
+        logging.error(f"Error fetching org members: {response.status_code}")
         return []
 
-def get_user_email(username):
+def fetch_user_email(username, token):
     url = f"{GITHUB_API_URL}/users/{username}"
-    try:
-        user_data = make_request(url)
-        return user_data.get('email')
-    except requests.RequestException as e:
-        logging.error(f"Failed to get email for user {username}. Error: {str(e)}")
+    headers = {
+        "Authorization": f"token {token}",
+        "Accept": "application/vnd.github.v3+json"
+    }
+    response = requests.get(url, headers=headers)
+    if response.status_code == 200:
+        user_data = response.json()
+        return user_data.get("email")
+    else:
+        logging.error(f"Error fetching user email: {response.status_code}")
         return None
 
-def reclaim_mannequin(mannequin_id, target_user):
-    url = f"{GITHUB_API_URL}/enterprises/{ORG_NAME}/mannequins/{mannequin_id}/reclaim"
-    data = {
-        "target_user_id": target_user,
-        "skip_invitation": False  # Set to False to send an invitation
-    }
-    try:
-        make_request(url, method='post', data=data)
-        logging.info(f"Successfully sent reclamation invitation for mannequin {mannequin_id} to user {target_user}")
-        return True
-    except requests.RequestException as e:
-        logging.error(f"Failed to send reclamation invitation for mannequin {mannequin_id}: {str(e)}")
-        return False
+def read_ghec_csv(file_path):
+    with open(file_path, 'r') as file:
+        reader = csv.DictReader(file)
+        return list(reader)
 
-def validate_csv(csv_file):
-    if not os.path.exists(csv_file):
-        raise FileNotFoundError(f"CSV file not found: {csv_file}")
-    with open(csv_file, 'r') as file:
-        csv_reader = csv.reader(file)
-        header = next(csv_reader, None)
-        if header != ['mannequin_username', 'mannequin_id', 'target-user']:
-            raise ValueError("CSV file does not have the correct header format")
+def read_emu_excel(file_path):
+    wb = load_workbook(filename=file_path, read_only=True)
+    sheet = wb.active
+    headers = [cell.value for cell in sheet[1]]
+    emu_users = []
+    for row in sheet.iter_rows(min_row=2, values_only=True):
+        emu_users.append(dict(zip(headers, row)))
+    return emu_users
 
-def process_mannequins(csv_file):
-    org_members = {member['login']: member for member in get_org_members(ORG_NAME)}
+def process_mannequins(ghec_csv, emu_users):
+    ghec_data = read_ghec_csv(ghec_csv)
+    updated_data = []
 
-    with open(csv_file, 'r') as file:
-        csv_reader = csv.DictReader(file)
-        for row in csv_reader:
-            mannequin_username = row['mannequin_username']
-            mannequin_id = row['mannequin_id']
-            target_user = row['target-user']
-
-            if mannequin_username in org_members:
-                mannequin_email = get_user_email(mannequin_username)
-                target_user_email = get_user_email(target_user)
-                
-                if mannequin_email and target_user_email:
-                    success = reclaim_mannequin(mannequin_id, target_user)
-                    if success:
-                        logging.info(f"Successfully sent reclamation invitation for mannequin {mannequin_id} ({mannequin_username}) to user {target_user}")
-                    else:
-                        logging.error(f"Failed to send reclamation invitation for mannequin {mannequin_id} ({mannequin_username})")
-                else:
-                    logging.warning(f"Could not fetch email for mannequin {mannequin_username} or target user {target_user}")
+    for mannequin in ghec_data:
+        mannequin_username = mannequin['mannequin-user']
+        mannequin_id = mannequin['mannequin-id']
+        
+        email = fetch_user_email(mannequin_username, GITHUB_TOKEN)
+        if email:
+            target_user = next((user for user in emu_users if user['saml_name_id'] == email), None)
+            if target_user:
+                mannequin['target-user'] = target_user['login']
+                logging.info(f"Found target user: {target_user['login']} for mannequin: {mannequin_username}")
             else:
-                logging.warning(f"Mannequin {mannequin_username} not found in organization members")
+                logging.warning(f"No target user found for mannequin: {mannequin_username}")
+        else:
+            logging.warning(f"No email found for mannequin: {mannequin_username}")
+        
+        updated_data.append(mannequin)
+
+    # Write updated data back to CSV
+    with open(ghec_csv, 'w', newline='') as file:
+        fieldnames = ['mannequin-user', 'mannequin-id', 'target-user']
+        writer = csv.DictWriter(file, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(updated_data)
 
 def main():
+    if not all([GITHUB_TOKEN, ORG_NAME, GHEC_CSV, EMU_EXCEL]):
+        logging.error("Missing required environment variables. Please check your .env file.")
+        return
+
     try:
-        validate_csv(CSV_FILE)
-        process_mannequins(CSV_FILE)
-    except (FileNotFoundError, ValueError) as e:
-        logging.error(str(e))
-        sys.exit(1)
+        emu_users = read_emu_excel(EMU_EXCEL)
+        process_mannequins(GHEC_CSV, emu_users)
+        logging.info("CSV file updated with target users.")
+    except Exception as e:
+        logging.error(f"An error occurred: {str(e)}")
 
 if __name__ == "__main__":
     main()
