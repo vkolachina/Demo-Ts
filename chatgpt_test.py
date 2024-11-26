@@ -1,86 +1,84 @@
-import requests
 import pandas as pd
+import csv
 import os
 from dotenv import load_dotenv
-import csv
 
 # Load environment variables from .env file
 load_dotenv()
 
-# Access the environment variables
+# Access environment variables
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
+ORG_NAME = os.getenv("ORG_NAME")
 EMU_USERS_FILE = os.getenv("EMU_USERS_FILE")
 USER_MAPPINGS_FILE = os.getenv("USER_MAPPINGS_FILE")
-ORG_NAME = os.getenv("ORG_NAME")
 
-# Function to find a user in the EMU users list based on GitHub handle
-def find_user_in_emu(github_handle, emu_users_df):
-    # Try to match mannequin-user with 'login' or 'name' columns in the EMU users DataFrame
-    return emu_users_df[emu_users_df['login'] == github_handle].iloc[0] if not emu_users_df[emu_users_df['login'] == github_handle].empty else None
-
-# Function to process the user mappings from the CSV file
-def process_user_mappings(mappings, emu_users_df, org_name):
-    print("Processing user mappings...")
-    
-    # Iterate through each mapping and check for matches
-    for mapping in mappings:
-        mannequin_user = mapping.get("mannequin-user")  # Get the mannequin-user from the CSV
-        if not mannequin_user:
-            print(f"Skipping row due to missing 'mannequin-user': {mapping}")
-            continue
-
-        # Find the matching EMU user
-        matched_emu_user = find_user_in_emu(mannequin_user, emu_users_df)
-        
-        if matched_emu_user is not None:
-            # Extract email from matched user
-            emu_email = matched_emu_user.get("email")
-            if emu_email:
-                # Extract the empirical (before '@') part from the email and add the suffix 'mgmri'
-                empirical_part = emu_email.split('@')[0]
-                target_user = f"{empirical_part}_{org_name}"
-                
-                # Update the target-user field in the CSV mapping
-                mapping["target-user"] = target_user
-                print(f"Updated target-user for {mannequin_user}: {target_user}")
-            else:
-                print(f"No email found for EMU user: {mannequin_user}")
-        else:
-            print(f"No match found in EMU for mannequin-user: {mannequin_user}")
-
-# Main function to execute the process
-def main():
+# Function to read the input files
+def read_input_files():
     print("Reading input files...")
-
-    # Load the Excel file into a DataFrame
-    print("Reading the Excel file")
+    # Load the EMU users Excel file
     emu_users_df = pd.read_excel(EMU_USERS_FILE)
 
-    # Validate required columns in the Excel file
-    required_columns = {"login", "name", "email"}
+    # Verify required columns are present in the EMU Excel sheet
+    required_columns = {'login', 'name', 'saml_name_id'}
     if not required_columns.issubset(emu_users_df.columns):
         raise ValueError(f"Excel file must contain the following columns: {required_columns}")
 
-    # Load the CSV file into a list of dictionaries
-    print("Reading the CSV file")
+    print("Reading the Excel file")
+    return emu_users_df
+
+# Function to process the user mappings from the CSV file
+def process_user_mappings(user_mappings_file, emu_users_df, org_name):
+    print("Processing user mappings")
+
+    # Read the CSV file with user mappings
     mappings = []
-    with open(USER_MAPPINGS_FILE, mode='r', newline='', encoding='utf-8') as file:
+    with open(user_mappings_file, mode='r', newline='', encoding='utf-8') as file:
         reader = csv.DictReader(file)
         for row in reader:
             mappings.append(row)
 
-    # Process the mappings
-    process_user_mappings(mappings, emu_users_df, ORG_NAME)
+    # Iterate through each mapping and match the mannequin-user
+    for mapping in mappings:
+        mannequin_user = mapping.get("mannequin-user")
+        if not mannequin_user:
+            print(f"Skipping row due to missing 'mannequin-user': {mapping}")
+            continue
 
-    # Write the updated mappings back to the CSV
-    print("Writing updates back to the CSV file")
-    with open(USER_MAPPINGS_FILE, mode='w', newline='', encoding='utf-8') as file:
+        # Find the matching user from the EMU data (matching login or name)
+        matched_user = emu_users_df[(emu_users_df['login'] == mannequin_user) | 
+                                     (emu_users_df['name'] == mannequin_user)]
+        
+        if not matched_user.empty:
+            # Assuming the email-like identifier is in 'saml_name_id'
+            email = matched_user.iloc[0]["saml_name_id"]  # Extract email-like value from saml_name_id
+
+            # Extract the empirical part of the email
+            empirical = email.split('@')[0] if '@' in email else email
+            target_user = f"{empirical}_{org_name}"
+
+            # Update target-user in the CSV mapping
+            mapping["target-user"] = target_user
+            print(f"Updated target-user for {mannequin_user}: {target_user}")
+        else:
+            print(f"No match found for mannequin-user: {mannequin_user}")
+
+    # Write the updated mappings back to the CSV file
+    print("Writing updates back to the user mappings file")
+    with open(user_mappings_file, mode='w', newline='', encoding='utf-8') as file:
         fieldnames = ["mannequin-user", "mannequin-id", "target-user"]
         writer = csv.DictWriter(file, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerows(mappings)
 
-    print("Process completed successfully!")
+    print("Process completed successfully")
+
+# Main function to execute the process
+def main():
+    # Read the input files and load data
+    emu_users_df = read_input_files()
+
+    # Process the user mappings and update target-user
+    process_user_mappings(USER_MAPPINGS_FILE, emu_users_df, ORG_NAME)
 
 if __name__ == "__main__":
     main()
