@@ -1,28 +1,33 @@
 import pandas as pd
 import csv
+import os
+from dotenv import load_dotenv
 
-# Constants
-CSV_FILE = "user-mappings-template.csv"  # Input CSV file
-EXCEL_FILE = "emu_users.xlsx"  # Input Excel file
-ORG_SUFFIX = "mgmri"  # Organization suffix to append
+# Load environment variables
+load_dotenv()
 
-def process_user_mappings(csv_file, excel_file, org_suffix):
+# Access environment variables
+CSV_FILE_PATH = os.getenv("CSV_FILE_PATH")  # Path to the CSV file
+EXCEL_FILE_PATH = os.getenv("EXCEL_FILE_PATH")  # Path to the Excel file
+ORG_NAME = os.getenv("ORG_NAME")  # Organization name to append
+
+def process_user_mappings(csv_file_path, excel_file_path, org_name):
     """
     Process the CSV and Excel files to update the 'target-user' column in the CSV file.
 
     Args:
-        csv_file (str): Path to the user-mappings-template.csv file.
-        excel_file (str): Path to the Excel file with user data.
-        org_suffix (str): Organization suffix to append to the empirical part of the email.
+        csv_file_path (str): Path to the user-mappings-template.csv file.
+        excel_file_path (str): Path to the Excel file with user data.
+        org_name (str): Organization name to append to the empirical part of the email.
     """
     print("Reading input files...")
 
     # Load CSV file
-    with open(csv_file, mode="r", encoding="utf-8") as file:
+    with open(csv_file_path, mode="r", encoding="utf-8") as file:
         mappings = list(csv.DictReader(file))
 
     # Load Excel file into a DataFrame
-    emu_users_df = pd.read_excel(excel_file)
+    emu_users_df = pd.read_excel(excel_file_path)
 
     print(f"Columns in Excel file: {emu_users_df.columns.tolist()}")
 
@@ -52,9 +57,9 @@ def process_user_mappings(csv_file, excel_file, org_suffix):
             # Retrieve the email of the first matched user
             email = matched_user.iloc[0]["email"]
 
-            # Extract the empirical part of the email and append the organization suffix
+            # Extract the empirical part of the email and append the organization name
             empirical = email.split("@")[0]
-            target_user = f"{empirical}_{org_suffix}"
+            target_user = f"{empirical}_{org_name}"
 
             # Update the 'target-user' field
             mapping["target-user"] = target_user
@@ -66,7 +71,7 @@ def process_user_mappings(csv_file, excel_file, org_suffix):
 
     # Write the updated data back to the CSV file
     print("Writing updated data to CSV file...")
-    with open(csv_file, mode="w", newline="", encoding="utf-8") as file:
+    with open(csv_file_path, mode="w", newline="", encoding="utf-8") as file:
         fieldnames = ["mannequin-user", "mannequin-id", "target-user"]
         writer = csv.DictWriter(file, fieldnames=fieldnames)
         writer.writeheader()
@@ -79,7 +84,7 @@ def main():
     Main function to execute the script.
     """
     try:
-        process_user_mappings(CSV_FILE, EXCEL_FILE, ORG_SUFFIX)
+        process_user_mappings(CSV_FILE_PATH, EXCEL_FILE_PATH, ORG_NAME)
     except Exception as e:
         print(f"An error occurred: {e}")
 
