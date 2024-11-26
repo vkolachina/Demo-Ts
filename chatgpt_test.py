@@ -18,7 +18,7 @@ def process_user_mappings(csv_file_path, excel_file_path, org_name):
     Args:
         csv_file_path (str): Path to the user-mappings-template.csv file.
         excel_file_path (str): Path to the Excel file with user data.
-        org_name (str): Organization name to append to the empirical part of the email.
+        org_name (str): Organization name to append to the empirical part.
     """
     print("Reading input files...")
 
@@ -32,7 +32,7 @@ def process_user_mappings(csv_file_path, excel_file_path, org_name):
     print(f"Columns in Excel file: {emu_users_df.columns.tolist()}")
 
     # Ensure necessary columns are present in the Excel file
-    required_columns = {"login", "name", "email"}
+    required_columns = {"login", "name", "saml_name_id"}
     if not required_columns.issubset(emu_users_df.columns):
         raise ValueError(
             f"Excel file must contain the following columns: {required_columns}"
@@ -54,11 +54,11 @@ def process_user_mappings(csv_file_path, excel_file_path, org_name):
         ]
 
         if not matched_user.empty:
-            # Retrieve the email of the first matched user
-            email = matched_user.iloc[0]["email"]
+            # Retrieve the saml_name_id (assuming it contains the email-like data)
+            saml_name_id = matched_user.iloc[0]["saml_name_id"]
 
-            # Extract the empirical part of the email and append the organization name
-            empirical = email.split("@")[0]
+            # Extract the empirical part of the saml_name_id and append the organization name
+            empirical = saml_name_id.split("@")[0]
             target_user = f"{empirical}_{org_name}"
 
             # Update the 'target-user' field
