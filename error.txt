@@ -4,31 +4,6 @@ Traceback (most recent call last):
   File "c:\Users\VKOLACHIN1\OneDrive - MGM Resorts International\Desktop\Useronboarding - mapping\mapping.py", line 86, in <module>
     main()
     ~~~~^^
-  File "c:\Users\VKOLACHIN1\OneDrive - MGM Resorts International\Desktop\Useronboarding - mapping\mapping.py", line 57, in main
-    emu_users_df = pd.read_excel(EMU_USERS_FILE)
-  File "C:\Users\VKOLACHIN1\AppData\Local\Programs\Python\Python313\Lib\site-packages\pandas\io\excel\_base.py", line 495, in read_excel
-    io = ExcelFile(
-        io,
-    ...<2 lines>...
-        engine_kwargs=engine_kwargs,
-    )
-  File "C:\Users\VKOLACHIN1\AppData\Local\Programs\Python\Python313\Lib\site-packages\pandas\io\excel\_base.py", line 1550, in __init__
-    ext = inspect_excel_format(
-        content_or_path=path_or_buffer, storage_options=storage_options
-    )
-  File "C:\Users\VKOLACHIN1\AppData\Local\Programs\Python\Python313\Lib\site-packages\pandas\io\excel\_base.py", line 1402, in inspect_excel_format
-    with get_handle(
-         ~~~~~~~~~~^
-        content_or_path, "rb", storage_options=storage_options, is_text=False
-        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    ) as handle:
-    ^
-  File "C:\Users\VKOLACHIN1\AppData\Local\Programs\Python\Python313\Lib\site-packages\pandas\io\common.py", line 728, in get_handle
-    ioargs = _get_filepath_or_buffer(
-        path_or_buf,
-    ...<3 lines>...
-        storage_options=storage_options,
-    )
-  File "C:\Users\VKOLACHIN1\AppData\Local\Programs\Python\Python313\Lib\site-packages\pandas\io\common.py", line 472, in _get_filepath_or_buffer
-    raise ValueError(msg)
-ValueError: Invalid file path or buffer object type: <class 'NoneType'>
+  File "c:\Users\VKOLACHIN1\OneDrive - MGM Resorts International\Desktop\Useronboarding - mapping\mapping.py", line 62, in main
+    raise ValueError(f"Excel file must contain the following columns: {required_columns}")
+ValueError: Excel file must contain the following columns: {'name', 'login', 'email'}
