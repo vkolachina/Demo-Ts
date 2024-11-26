@@ -52,8 +52,10 @@ def process_user_mappings(user_mappings_file, emu_users_df, org_name):
             # Assuming the email-like identifier is in 'saml_name_id'
             email = matched_user.iloc[0]["saml_name_id"]  # Extract email-like value from saml_name_id
 
-            # Extract the empirical part of the email
+            # Extract the empirical part of the email before the "@" symbol (if present)
             empirical = email.split('@')[0] if '@' in email else email
+            
+            # Correct the target-user format by appending the suffix "_mgmri"
             target_user = f"{empirical}_{org_name}"
 
             # Update target-user in the CSV mapping
