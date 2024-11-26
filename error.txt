@@ -1,9 +1,34 @@
-Fetching members of the organization: mgmri-dge
-Error fetching members: 401
-{'message': 'Bad credentials', 'documentation_url': 'https://docs.github.com/rest', 'status': '401'}
-Fetching emails for organization members...
-Processing the CSV file: user-mappings-template.csv
-No match found for: vaidy-ea
-Updating the CSV file: user-mappings-template.csv
-CSV update completed. File saved as 'user-mappings-template.csv'.
-PS C:\Users\VKOLACHIN1\OneDrive - MGM Resorts International\Desktop\Useronboarding - mapping> 
+Loading EMU users list
+Reading user mappings template
+Processing user mappings
+Traceback (most recent call last):
+  File "C:\Users\VKOLACHIN1\AppData\Local\Programs\Python\Python313\Lib\site-packages\pandas\core\indexes\base.py", line 3805, in get_loc
+    return self._engine.get_loc(casted_key)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+  File "index.pyx", line 167, in pandas._libs.index.IndexEngine.get_loc
+  File "index.pyx", line 196, in pandas._libs.index.IndexEngine.get_loc
+  File "pandas\\_libs\\hashtable_class_helper.pxi", line 7081, in pandas._libs.hashtable.PyObjectHashTable.get_item
+  File "pandas\\_libs\\hashtable_class_helper.pxi", line 7089, in pandas._libs.hashtable.PyObjectHashTable.get_item
+KeyError: 'email'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "c:\Users\VKOLACHIN1\OneDrive - MGM Resorts International\Desktop\Useronboarding - mapping\mapping.py", line 68, in <module>
+    main()
+    ~~~~^^
+  File "c:\Users\VKOLACHIN1\OneDrive - MGM Resorts International\Desktop\Useronboarding - mapping\mapping.py", line 65, in main
+    process_user_mappings(USER_MAPPINGS_FILE, emu_users_df, ORG_SUFFIX)
+    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\Users\VKOLACHIN1\OneDrive - MGM Resorts International\Desktop\Useronboarding - mapping\mapping.py", line 37, in process_user_mappings
+    email = matched_user.iloc[0]["email"]  # Assuming 'email' column exists
+            ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\VKOLACHIN1\AppData\Local\Programs\Python\Python313\Lib\site-packages\pandas\core\series.py", line 1121, in __getitem__
+    return self._get_value(key)
+           ~~~~~~~~~~~~~~~^^^^^
+  File "C:\Users\VKOLACHIN1\AppData\Local\Programs\Python\Python313\Lib\site-packages\pandas\core\series.py", line 1237, in _get_value
+    loc = self.index.get_loc(label)
+  File "C:\Users\VKOLACHIN1\AppData\Local\Programs\Python\Python313\Lib\site-packages\pandas\core\indexes\base.py", line 3812, in get_loc
+    raise KeyError(key) from err
+KeyError: 'email'
+PS C:\Users\VKOLACHIN1\OneDrive - MGM Resorts International\Desktop\User
