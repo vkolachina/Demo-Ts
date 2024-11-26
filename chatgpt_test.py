@@ -1,92 +1,86 @@
+import requests
 import pandas as pd
-import csv
 import os
 from dotenv import load_dotenv
+import csv
 
-# Load environment variables
+# Load environment variables from .env file
 load_dotenv()
 
-# Access environment variables
-CSV_FILE_PATH = os.getenv("CSV_FILE_PATH")  # Path to the CSV file
-EXCEL_FILE_PATH = os.getenv("EXCEL_FILE_PATH")  # Path to the Excel file
-ORG_NAME = os.getenv("ORG_NAME")  # Organization name to append
+# Access the environment variables
+GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
+EMU_USERS_FILE = os.getenv("EMU_USERS_FILE")
+USER_MAPPINGS_FILE = os.getenv("USER_MAPPINGS_FILE")
+ORG_NAME = os.getenv("ORG_NAME")
 
-def process_user_mappings(csv_file_path, excel_file_path, org_name):
-    """
-    Process the CSV and Excel files to update the 'target-user' column in the CSV file.
+# Function to find a user in the EMU users list based on GitHub handle
+def find_user_in_emu(github_handle, emu_users_df):
+    # Try to match mannequin-user with 'login' or 'name' columns in the EMU users DataFrame
+    return emu_users_df[emu_users_df['login'] == github_handle].iloc[0] if not emu_users_df[emu_users_df['login'] == github_handle].empty else None
 
-    Args:
-        csv_file_path (str): Path to the user-mappings-template.csv file.
-        excel_file_path (str): Path to the Excel file with user data.
-        org_name (str): Organization name to append to the empirical part.
-    """
-    print("Reading input files...")
-
-    # Load CSV file
-    with open(csv_file_path, mode="r", encoding="utf-8") as file:
-        mappings = list(csv.DictReader(file))
-
-    # Load Excel file into a DataFrame
-    emu_users_df = pd.read_excel(excel_file_path)
-
-    print(f"Columns in Excel file: {emu_users_df.columns.tolist()}")
-
-    # Ensure necessary columns are present in the Excel file
-    required_columns = {"login", "name", "saml_name_id"}
-    if not required_columns.issubset(emu_users_df.columns):
-        raise ValueError(
-            f"Excel file must contain the following columns: {required_columns}"
-        )
-
+# Function to process the user mappings from the CSV file
+def process_user_mappings(mappings, emu_users_df, org_name):
     print("Processing user mappings...")
-
-    # Update each row in the CSV mappings
+    
+    # Iterate through each mapping and check for matches
     for mapping in mappings:
-        mannequin_user = mapping.get("mannequin-user")
+        mannequin_user = mapping.get("mannequin-user")  # Get the mannequin-user from the CSV
         if not mannequin_user:
             print(f"Skipping row due to missing 'mannequin-user': {mapping}")
             continue
 
-        # Find matching row(s) in the Excel file based on 'login' or 'name'
-        matched_user = emu_users_df[
-            (emu_users_df["login"] == mannequin_user)
-            | (emu_users_df["name"] == mannequin_user)
-        ]
-
-        if not matched_user.empty:
-            # Retrieve the saml_name_id (assuming it contains the email-like data)
-            saml_name_id = matched_user.iloc[0]["saml_name_id"]
-
-            # Extract the empirical part of the saml_name_id and append the organization name
-            empirical = saml_name_id.split("@")[0]
-            target_user = f"{empirical}_{org_name}"
-
-            # Update the 'target-user' field
-            mapping["target-user"] = target_user
-            print(f"Updated target-user for {mannequin_user}: {target_user}")
+        # Find the matching EMU user
+        matched_emu_user = find_user_in_emu(mannequin_user, emu_users_df)
+        
+        if matched_emu_user is not None:
+            # Extract email from matched user
+            emu_email = matched_emu_user.get("email")
+            if emu_email:
+                # Extract the empirical (before '@') part from the email and add the suffix 'mgmri'
+                empirical_part = emu_email.split('@')[0]
+                target_user = f"{empirical_part}_{org_name}"
+                
+                # Update the target-user field in the CSV mapping
+                mapping["target-user"] = target_user
+                print(f"Updated target-user for {mannequin_user}: {target_user}")
+            else:
+                print(f"No email found for EMU user: {mannequin_user}")
         else:
-            # No match found in the Excel file
-            print(f"No match found in Excel file for {mannequin_user}")
-            mapping["target-user"] = None
+            print(f"No match found in EMU for mannequin-user: {mannequin_user}")
 
-    # Write the updated data back to the CSV file
-    print("Writing updated data to CSV file...")
-    with open(csv_file_path, mode="w", newline="", encoding="utf-8") as file:
+# Main function to execute the process
+def main():
+    print("Reading input files...")
+
+    # Load the Excel file into a DataFrame
+    print("Reading the Excel file")
+    emu_users_df = pd.read_excel(EMU_USERS_FILE)
+
+    # Validate required columns in the Excel file
+    required_columns = {"login", "name", "email"}
+    if not required_columns.issubset(emu_users_df.columns):
+        raise ValueError(f"Excel file must contain the following columns: {required_columns}")
+
+    # Load the CSV file into a list of dictionaries
+    print("Reading the CSV file")
+    mappings = []
+    with open(USER_MAPPINGS_FILE, mode='r', newline='', encoding='utf-8') as file:
+        reader = csv.DictReader(file)
+        for row in reader:
+            mappings.append(row)
+
+    # Process the mappings
+    process_user_mappings(mappings, emu_users_df, ORG_NAME)
+
+    # Write the updated mappings back to the CSV
+    print("Writing updates back to the CSV file")
+    with open(USER_MAPPINGS_FILE, mode='w', newline='', encoding='utf-8') as file:
         fieldnames = ["mannequin-user", "mannequin-id", "target-user"]
         writer = csv.DictWriter(file, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerows(mappings)
 
-    print("Processing completed successfully.")
-
-def main():
-    """
-    Main function to execute the script.
-    """
-    try:
-        process_user_mappings(CSV_FILE_PATH, EXCEL_FILE_PATH, ORG_NAME)
-    except Exception as e:
-        print(f"An error occurred: {e}")
+    print("Process completed successfully!")
 
 if __name__ == "__main__":
     main()
