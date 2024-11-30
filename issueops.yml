@@ -5,10 +5,9 @@ on:
     types: [created]
 
 jobs:
-  execute-script:
-    if: startsWith(github.event.comment.body, '/trigger-action')
+  run-script:
+    if: ${{ github.event.comment.body.startsWith('/run-migration') }}
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -16,25 +15,17 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: 3.9
+          python-version: '3.10'
 
-      - name: Install Python dependencies
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install pandas openpyxl
+          pip install pandas openpyxl
 
-      - name: Extract parameters from comment
-        id: extract_params
-        run: |
-          echo "COMMENT_BODY=${{ github.event.comment.body }}" >> $GITHUB_ENV
-          echo "EMU_USERS_FILE=$(echo ${{ github.event.comment.body }} | grep -oP '(?<=--emu-users-file=)[^ ]+')" >> $GITHUB_ENV
-          echo "USER_MAPPINGS_FILE=$(echo ${{ github.event.comment.body }} | grep -oP '(?<=--user-mappings-file=)[^ ]+')" >> $GITHUB_ENV
-          echo "ORG_NAME=$(echo ${{ github.event.comment.body }} | grep -oP '(?<=--org-name=)[^ ]+')" >> $GITHUB_ENV
-
-      - name: Run migration script
+      - name: Execute Migration Script
         env:
-          EMU_USERS_FILE: ${{ env.EMU_USERS_FILE }}
-          USER_MAPPINGS_FILE: ${{ env.USER_MAPPINGS_FILE }}
-          ORG_NAME: ${{ env.ORG_NAME }}
-        run: |
-          python mapping.py
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EMU_USERS_FILE: ${{ vars.EMU_USERS_FILE }}
+          USER_MAPPINGS_FILE: ${{ vars.USER_MAPPINGS_FILE }}
+          ORG_NAME: ${{ vars.ORG_NAME }}
+        run: python mapping.py
