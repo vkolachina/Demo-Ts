@@ -1,27 +1,32 @@
 import pandas as pd
 import os
 import csv
-from dotenv import load_dotenv
 
-# Load environment variables from .env file
-load_dotenv()
+# Access the environment variables
+GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")  # Set in GitHub Secrets
+EMU_USERS_FILE = os.getenv("EMU_USERS_FILE")  # Non-sensitive, from GitHub Variables
+USER_MAPPINGS_FILE = os.getenv("USER_MAPPINGS_FILE")  # Non-sensitive, from GitHub Variables
+ORG_NAME = os.getenv("ORG_NAME")  # Set in GitHub Secrets or Variables
+
+# Extract base organization name (e.g., 'mgmri' from 'mgmri-dge')
+ORG_SUFFIX = ORG_NAME.split('-')[0] if ORG_NAME else ''
 
 # Function to read the Excel file
 def read_excel_file(file_name):
-    print(f"Reading the Excel file: {file_name}")
     if not os.path.exists(file_name):
         raise FileNotFoundError(f"Excel file {file_name} not found")
+    print(f"Reading Excel file: {file_name}")
     return pd.read_excel(file_name)
 
-# Function to read the CSV file
+# Function to read the user mappings CSV file
 def read_csv_file(file_name):
-    print(f"Reading the CSV file: {file_name}")
     if not os.path.exists(file_name):
         raise FileNotFoundError(f"CSV file {file_name} not found")
+    print(f"Reading CSV file: {file_name}")
     with open(file_name, mode='r', newline='', encoding='utf-8') as file:
         return list(csv.DictReader(file))
 
-# Function to update the CSV file
+# Function to update target-user column in the CSV file
 def update_csv_file(file_name, mappings):
     print(f"Writing updates back to the CSV file: {file_name}")
     with open(file_name, mode='w', newline='', encoding='utf-8') as file:
@@ -29,14 +34,12 @@ def update_csv_file(file_name, mappings):
         writer = csv.DictWriter(file, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerows(mappings)
-    print("CSV file updated successfully")
+    print("CSV file updated successfully.")
 
 # Function to process user mappings
-def process_user_mappings(user_mappings_file, emu_users_df, org_name):
+def process_user_mappings(user_mappings_file, emu_users_df, org_suffix):
     print("Processing user mappings...")
-    
     mappings = read_csv_file(user_mappings_file)
-    org_suffix = org_name.split('-')[0]  # Extract base organization name (e.g., 'mgmri')
 
     for mapping in mappings:
         mannequin_user = mapping.get("mannequin-user")
@@ -53,7 +56,7 @@ def process_user_mappings(user_mappings_file, emu_users_df, org_name):
         # Assuming email-like data is in the 'saml_name_id' field
         email = matched_user.iloc[0]["saml_name_id"]
 
-        # Extract the empirical part before the '@' and append '_org_suffix'
+        # Extract the empirical part before the '@' and append '_ORG_SUFFIX'
         empirical_part = email.split('@')[0]
         target_user = f"{empirical_part}_{org_suffix}"
 
@@ -67,17 +70,11 @@ def process_user_mappings(user_mappings_file, emu_users_df, org_name):
 # Main function to execute the process
 def main():
     print("Executing migration script...")
+    if not (GITHUB_TOKEN and EMU_USERS_FILE and USER_MAPPINGS_FILE and ORG_NAME):
+        raise ValueError("Missing required environment variables. Ensure they are set correctly.")
 
-    # Get parameters from environment variables
-    emu_users_file = os.getenv("EMU_USERS_FILE")
-    user_mappings_file = os.getenv("USER_MAPPINGS_FILE")
-    org_name = os.getenv("ORG_NAME")
-
-    if not emu_users_file or not user_mappings_file or not org_name:
-        raise ValueError("Missing required parameters. Ensure all parameters are provided.")
-
-    # Read the EMU users Excel file
-    emu_users_df = read_excel_file(emu_users_file)
+    # Load the EMU users Excel file
+    emu_users_df = read_excel_file(EMU_USERS_FILE)
 
     # Check if the required columns are present in the Excel file
     required_columns = {'login', 'name', 'saml_name_id'}
@@ -85,7 +82,7 @@ def main():
         raise ValueError(f"Excel file must contain the following columns: {required_columns}")
 
     # Process user mappings and update the CSV file
-    process_user_mappings(user_mappings_file, emu_users_df, org_name)
+    process_user_mappings(USER_MAPPINGS_FILE, emu_users_df, ORG_SUFFIX)
 
 if __name__ == "__main__":
     main()
