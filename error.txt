@@ -1,19 +1,10 @@
+Run python mapping.py
 Traceback (most recent call last):
-Traceback (most recent call last):
-Traceback (most recent call last):
-Traceback (most recent call last):
-  File "c:\Users\VKOLACHIN1\OneDrive - MGM Resorts International\Desktop\Target\mannequin\mapping.py", line 95, 
-in <module>
+  File "/home/runner/work/mannequin/mannequin/mapping.py", line 88, in <module>
+Executing migration script...
     main()
-    ~~~~^^
-  File "c:\Users\VKOLACHIN1\OneDrive - MGM Resorts International\Desktop\Target\mannequin\mapping.py", line 92, 
-in main
-    process_user_mappings(user_mappings_file, emu_users_df, org_name)
-    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "c:\Users\VKOLACHIN1\OneDrive - MGM Resorts International\Desktop\Target\mannequin\mapping.py", line 42, 
-in process_user_mappings
-    mappings = read_csv_file(user_mappings_file)
-  File "c:\Users\VKOLACHIN1\OneDrive - MGM Resorts International\Desktop\Target\mannequin\mapping.py", line 24, 
-in read_csv_file
-    raise FileNotFoundError(f"CSV file {file_name} not found")
-FileNotFoundError: CSV file user-mappings-template.csv not found
+  File "/home/runner/work/mannequin/mannequin/mapping.py", line 77, in main
+    emu_users_df = read_excel_file(EMU_USERS_FILE)
+  File "/home/runner/work/mannequin/mannequin/mapping.py", line 17, in read_excel_file
+    raise FileNotFoundError(f"Excel file {file_name} not found")
+FileNotFoundError: Excel file MGM not found
