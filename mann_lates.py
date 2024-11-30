@@ -1,77 +1,107 @@
+import pandas as pd
 import os
+import re
 import csv
-import logging
-import requests
 from dotenv import load_dotenv
 
-# Load environment variables from .env file
+# Load environment variables
 load_dotenv()
 
-# Set up logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+# Function to parse parameters from the comment body
+def parse_comment(comment_body):
+    """Parse parameters from the comment body."""
+    emu_users_file = re.search(r'--emu-users-file=(\S+)', comment_body)
+    user_mappings_file = re.search(r'--user-mappings-file=(\S+)', comment_body)
+    org_name = re.search(r'--org-name=(\S+)', comment_body)
 
-# Environment variables
-GITHUB_TOKEN = os.getenv('GITHUB_TOKEN')
-ORG_NAME = os.getenv('ORG_NAME')
-CSV_FILE = os.getenv('CSV_FILE')
-
-GITHUB_API_URL = "https://api.github.com"
-
-def fetch_user_email(username):
-    url = f"{GITHUB_API_URL}/users/{username}"
-    headers = {
-        "Authorization": f"token {GITHUB_TOKEN}",
-        "Accept": "application/vnd.github.v3+json"
+    return {
+        "EMU_USERS_FILE": emu_users_file.group(1) if emu_users_file else None,
+        "USER_MAPPINGS_FILE": user_mappings_file.group(1) if user_mappings_file else None,
+        "ORG_NAME": org_name.group(1) if org_name else None,
     }
-    response = requests.get(url, headers=headers)
-    if response.status_code == 200:
-        user_data = response.json()
-        return user_data.get("email")
-    else:
-        logging.error(f"Error fetching user email: {response.status_code}")
-        return None
 
-def process_mannequins(csv_file):
-    with open(csv_file, 'r') as file:
-        csv_reader = csv.DictReader(file)
-        for row in csv_reader:
-            mannequin_username = row['mannequin_user']
-            mannequin_id = row['mannequin_id']
-            target_user = row['target_user']
+# Function to read the Excel file
+def read_excel_file(file_path):
+    print("Reading the Excel file")
+    return pd.read_excel(file_path)
 
-            # Fetch email for mannequin user (optional, if needed)
-            email = fetch_user_email(mannequin_username)
-            if email:
-                logging.info(f"Mannequin: {mannequin_username}, Email: {email}")
+# Function to read the CSV file
+def read_csv_file(file_path):
+    print("Reading the CSV file")
+    with open(file_path, mode='r', newline='', encoding='utf-8') as file:
+        return list(csv.DictReader(file))
 
-            # Process target user for reclaiming mannequin
-            if target_user:
-                logging.info(f"Processing target user: {target_user} for mannequin: {mannequin_username}")
-                # Implement further actions like reclaiming mannequin using target_user
-                reclaim_mannequin(mannequin_username, target_user)
-            else:
-                logging.warning(f"No target user specified for mannequin: {mannequin_username}")
+# Function to update the CSV file
+def update_csv_file(file_path, mappings):
+    print("Writing updates back to the CSV file")
+    with open(file_path, mode='w', newline='', encoding='utf-8') as file:
+        fieldnames = ["mannequin-user", "mannequin-id", "target-user"]
+        writer = csv.DictWriter(file, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(mappings)
+    print("CSV file updated successfully")
 
-def reclaim_mannequin(mannequin_username, target_user):
-    # Placeholder function - implement your logic here to reclaim mannequins
-    # This might involve API calls or other operations specific to your setup
-    logging.info(f"Reclaiming mannequin {mannequin_username} for target user {target_user}")
+# Function to process user mappings
+def process_user_mappings(user_mappings_file, emu_users_df, org_suffix):
+    print("Processing user mappings")
 
+    mappings = read_csv_file(user_mappings_file)
+    for mapping in mappings:
+        mannequin_user = mapping.get("mannequin-user")
+        if not mannequin_user:
+            print(f"Skipping row due to missing 'mannequin-user': {mapping}")
+            continue
+
+        # Match the user in the Excel file
+        matched_user = emu_users_df[emu_users_df['login'] == mannequin_user]
+        if matched_user.empty:
+            print(f"No match found for mannequin-user: {mannequin_user}")
+            continue
+
+        # Extract email-like value from 'saml_name_id'
+        email = matched_user.iloc[0]["saml_name_id"]
+        empirical_part = email.split('@')[0]
+        target_user = f"{empirical_part}_{org_suffix}"
+
+        mapping["target-user"] = target_user
+        print(f"Updated target-user for {mannequin_user} to {target_user}")
+
+    # Update the CSV file with new target-user values
+    update_csv_file(user_mappings_file, mappings)
+
+# Main function
 def main():
-    if not GITHUB_TOKEN:
-        logging.error("GITHUB_TOKEN not found. Please set it in the .env file.")
-        return
-    
-    if not CSV_FILE:
-        logging.error("CSV_FILE not found. Please set it in the .env file.")
-        return
+    print("Executing migration script...")
 
-    try:
-        process_mannequins(CSV_FILE)
-    except FileNotFoundError as e:
-        logging.error(str(e))
-    except Exception as e:
-        logging.error(f"Unexpected error: {str(e)}")
+    # Get the COMMENT_BODY environment variable
+    comment_body = os.getenv("COMMENT_BODY")
+    if not comment_body:
+        raise ValueError("COMMENT_BODY environment variable is missing")
+
+    # Parse the parameters
+    parsed_params = parse_comment(comment_body)
+    emu_users_file = parsed_params["EMU_USERS_FILE"]
+    user_mappings_file = parsed_params["USER_MAPPINGS_FILE"]
+    org_name = parsed_params["ORG_NAME"]
+
+    if not (emu_users_file and user_mappings_file and org_name):
+        raise ValueError("Missing required parameters in the comment")
+
+    print(f"EMU_USERS_FILE: {emu_users_file}")
+    print(f"USER_MAPPINGS_FILE: {user_mappings_file}")
+    print(f"ORG_NAME: {org_name}")
+
+    # Read Excel file
+    emu_users_df = read_excel_file(emu_users_file)
+    required_columns = {'login', 'name', 'saml_name_id'}
+    if not required_columns.issubset(emu_users_df.columns):
+        raise ValueError(f"Excel file must contain the following columns: {required_columns}")
+
+    # Extract base organization name (e.g., 'mgmri' from 'mgmri-dge')
+    org_suffix = org_name.split('-')[0]
+
+    # Process mappings
+    process_user_mappings(user_mappings_file, emu_users_df, org_suffix)
 
 if __name__ == "__main__":
     main()
