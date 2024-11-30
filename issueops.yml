@@ -1,0 +1,31 @@
+name: IssueOps - Execute Migration Script
+
+on:
+  issue_comment:
+    types:
+      - created
+
+jobs:
+  execute-script:
+    if: startsWith(github.event.comment.body, '/run-migration')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Out Repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Install Dependencies
+        run: pip install -r requirements.txt
+
+      - name: Execute Migration Script
+        env:
+          GITHUB_TOKEN: ${{ secrets.ADMIN_TOKEN }}
+          EMU_USERS_FILE: ${{ github.event.comment.body.split('--emu-users-file=')[1].split(' ')[0] }}
+          USER_MAPPINGS_FILE: ${{ github.event.comment.body.split('--user-mappings-file=')[1].split(' ')[0] }}
+          ORG_NAME: ${{ github.event.comment.body.split('--org-name=')[1].split(' ')[0] }}
+        run: |
+          python mapping.py
