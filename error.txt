@@ -1,12 +1,19 @@
 Traceback (most recent call last):
-  File "c:\Users\VKOLACHIN1\OneDrive - MGM Resorts International\Desktop\Target\mannequin\mapping.py", line 92, 
+Traceback (most recent call last):
+Traceback (most recent call last):
+Traceback (most recent call last):
+  File "c:\Users\VKOLACHIN1\OneDrive - MGM Resorts International\Desktop\Target\mannequin\mapping.py", line 95, 
 in <module>
     main()
     ~~~~^^
-  File "c:\Users\VKOLACHIN1\OneDrive - MGM Resorts International\Desktop\Target\mannequin\mapping.py", line 81, 
+  File "c:\Users\VKOLACHIN1\OneDrive - MGM Resorts International\Desktop\Target\mannequin\mapping.py", line 92, 
 in main
-    emu_users_df = read_excel_file(emu_users_file)
-  File "c:\Users\VKOLACHIN1\OneDrive - MGM Resorts International\Desktop\Target\mannequin\mapping.py", line 14, 
-in read_excel_file
-    raise FileNotFoundError(f"Excel file {file_name} not found")
-FileNotFoundError: Excel file MGM Resorts GitHub Enterprise Users - 11-06-24.xlsx not found
+    process_user_mappings(user_mappings_file, emu_users_df, org_name)
+    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\Users\VKOLACHIN1\OneDrive - MGM Resorts International\Desktop\Target\mannequin\mapping.py", line 42, 
+in process_user_mappings
+    mappings = read_csv_file(user_mappings_file)
+  File "c:\Users\VKOLACHIN1\OneDrive - MGM Resorts International\Desktop\Target\mannequin\mapping.py", line 24, 
+in read_csv_file
+    raise FileNotFoundError(f"CSV file {file_name} not found")
+FileNotFoundError: CSV file user-mappings-template.csv not found
