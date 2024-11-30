@@ -1,12 +1,10 @@
-Check failure on line 27 in .github/workflows/issueops.yml
-
-
-GitHub Actions
-/ IssueOps - Execute Migration Script
-Invalid workflow file
-
-The workflow is not valid. .github/workflows/issueops.yml (Line: 27, Col: 27): Unexpected symbol: '('. Located at position 32 within expression: github.event.comment.body.split('--emu-users-file=')[1].split(' ')[0] .github/workflows/issueops.yml (Line: 28, Col: 31): Unexpected symbol: '('. Located at position 32 within expression: github.event.comment.body.split('--user-mappings-file=')[1].split(' ')[0]
-          USER_MAPPINGS_FILE: ${{ github.event.comment.body.split('--user-mappings-file=')[1].split(' ')[0] }}
-          ORG_NAME: ${{ github.event.comment.body.split('--org-name=')[1].split(' ')[0] }}
-        run: |
-          python mapping.py
+Run python mapping.py
+  
+Traceback (most recent call last):
+  File "/home/runner/work/mannequin/mannequin/mapping.py", line 107, in <module>
+Executing migration script...
+    main()
+  File "/home/runner/work/mannequin/mannequin/mapping.py", line 88, in main
+    raise ValueError("Missing required parameters in the comment")
+ValueError: Missing required parameters in the comment
+Error: Process completed with exit code 1.
