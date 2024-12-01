@@ -1,8 +1,2 @@
-Run python mapping.py
-Traceback (most recent call last):
-Executing migration script...
-  File "/home/runner/work/mannequin/mannequin/mapping.py", line 88, in <module>
-    main()
-  File "/home/runner/work/mannequin/mannequin/mapping.py", line 74, in main
-    raise ValueError("Missing required environment variables. Ensure they are set correctly.")
-ValueError: Missing required environment variables. Ensure they are set correctly.
+Run if [[ "/run-reclaim --emu-users-file="MGM Resorts GitHub Enterprise Users - 11-06-24.xlsx" --user-mappings-file="user-mappings-template.csv" --org-name="mgmri-dge"" == *"/run-reclaim"* ]]; then
+/home/runner/work/_temp/c71f29cc-8214-45e7-9a0b-858296fa29ab.sh: line 1: conditional binary operator expected
