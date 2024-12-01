@@ -1,10 +1,8 @@
 Run python mapping.py
 Traceback (most recent call last):
-  File "/home/runner/work/mannequin/mannequin/mapping.py", line 88, in <module>
 Executing migration script...
+  File "/home/runner/work/mannequin/mannequin/mapping.py", line 88, in <module>
     main()
-  File "/home/runner/work/mannequin/mannequin/mapping.py", line 77, in main
-    emu_users_df = read_excel_file(EMU_USERS_FILE)
-  File "/home/runner/work/mannequin/mannequin/mapping.py", line 17, in read_excel_file
-    raise FileNotFoundError(f"Excel file {file_name} not found")
-FileNotFoundError: Excel file MGM not found
+  File "/home/runner/work/mannequin/mannequin/mapping.py", line 74, in main
+    raise ValueError("Missing required environment variables. Ensure they are set correctly.")
+ValueError: Missing required environment variables. Ensure they are set correctly.
