@@ -1,2 +1,17 @@
-Run if [[ "/run-reclaim --emu-users-file="MGM Resorts GitHub Enterprise Users - 11-06-24.xlsx" --user-mappings-file="user-mappings-template.csv" --org-name="mgmri-dge"" == *"/run-reclaim"* ]]; then
-/home/runner/work/_temp/c71f29cc-8214-45e7-9a0b-858296fa29ab.sh: line 1: conditional binary operator expected
+Run # Check if the comment contains /run-reclaim
+  # Check if the comment contains /run-reclaim
+  if [[ "/run-reclaim --emu-users-file="MGM Resorts GitHub Enterprise Users - 11-06-24.xlsx" --user-mappings-file="user-mappings-template.csv" --org-name="mgmri-dge"" =~ /run-reclaim ]]; then
+    echo "Reclaim command found in the comment"
+  else
+    echo "No reclaim command found, skipping job."
+    exit 0  # Exit early if no reclaim command
+  fi
+  shell: /usr/bin/bash -e {0}
+  env:
+    pythonLocation: /opt/hostedtoolcache/Python/3.12.7/x64
+    PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.12.7/x64/lib/pkgconfig
+    Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.7/x64
+    Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.7/x64
+    Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.7/x64
+    LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.12.7/x64/lib
+/home/runner/work/_temp/a210f0c3-019c-4d29-9521-ba20b4afcae4.sh: line 2: conditional binary operator expected
